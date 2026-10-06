@@ -1,0 +1,111 @@
+name: fastapi-fullstack-base44
+
+x-backend-env: &backend-env
+  FASTAPI_ENV: development
+  DATABASE_URL: postgresql://postgres:base44dev@db:5432/app
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SMTP_TLS: "false"
+  FRONTEND_HOST: https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+  UV_PROJECT_ENVIRONMENT: /venv
+  UV_LINK_MODE: copy
+  UV_PYTHON_DOWNLOADS: never
+
+services:
+  db:
+    image: postgres:18
+    restart: on-failure
+    environment:
+      POSTGRES_PASSWORD: base44dev
+      POSTGRES_DB: app
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  mailpit:
+    image: axllent/mailpit
+    restart: on-failure
+    ports:
+      - "8025:8025"
+
+  # One-shot: install Python deps, run migrations and seed the first superuser
+  prestart:
+    image: ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      - backend-venv:/venv
+      - uv-cache:/root/.cache/uv
+    environment: *backend-env
+    env_file:
+      - /run/base44/app.env
+    command: ["sh", "-ec", "uv sync --frozen --package app && cd backend && exec uv run --no-sync bash scripts/prestart.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    image: ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+    restart: on-failure
+    working_dir: /app
+    volumes:
+      - .:/app
+      - backend-venv:/venv
+      - uv-cache:/root/.cache/uv
+    environment: *backend-env
+    env_file:
+      - /run/base44/app.env
+    command: ["sh", "-ec", "uv sync --frozen --package app && cd backend && exec uv run --no-sync fastapi dev --host 0.0.0.0 --port 8000"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      prestart:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/utils/health-check/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    image: oven/bun:1.3.12
+    restart: on-failure
+    working_dir: /app
+    volumes:
+      - .:/app
+      - root-node-modules:/app/node_modules
+      - frontend-node-modules:/app/frontend/node_modules
+      - emails-node-modules:/app/packages/react-email/node_modules
+    environment:
+      __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS:
+      VITE_API_URL: https://3000-${BASE44_PUBLIC_HOST_SUFFIX}
+      API_PROXY_TARGET: http://backend:8000
+      CHOKIDAR_USEPOLLING: "true"
+    command: ["sh", "-ec", "bun install --frozen-lockfile && cd frontend && exec bunx --bun vite --host 0.0.0.0 --port 5173"]
+    ports:
+      - "3000:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://localhost:5173/'); if (!r.ok) { console.error('frontend failed'); process.exit(1) }"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  db-data:
+  backend-venv:
+  uv-cache:
+  root-node-modules:
+  frontend-node-modules:
+  emails-node-modules:

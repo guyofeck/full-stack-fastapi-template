@@ -1,0 +1,12 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "SENTRY_DSN",
+      "description": "Optional Sentry DSN for error reporting (Sentry project settings > Client Keys). Ignored when FASTAPI_ENV=development.",
+      "requiredAtBoot": false
+    }
+  ]
+}

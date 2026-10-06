@@ -15,6 +15,10 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
+  // Optional dev proxy for single-origin setups (e.g. docker-compose.base44.yml)
+  server: process.env.API_PROXY_TARGET
+    ? { proxy: { "/api": process.env.API_PROXY_TARGET } }
+    : undefined,
   plugins: [
     tanstackRouter({
       target: "react",
