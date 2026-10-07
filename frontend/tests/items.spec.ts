@@ -58,6 +58,45 @@ test.describe("Items management", () => {
     await expect(page.getByText(title)).toBeVisible()
   })
 
+  test("Search items by title and clear the search", async ({ page }) => {
+    const title = randomItemTitle()
+    const otherTitle = randomItemTitle()
+    for (const itemTitle of [title, otherTitle]) {
+      await page.getByRole("button", { name: "Add Item" }).click()
+      await page.getByLabel("Title", { exact: true }).fill(itemTitle)
+      await page.getByRole("button", { name: "Save" }).click()
+      await expect(page.getByRole("dialog")).not.toBeVisible()
+      await expect(page.getByText(itemTitle, { exact: true })).toBeVisible()
+    }
+
+    const search = page.getByRole("searchbox", {
+      name: "Search items by title",
+    })
+    const query = title.toUpperCase()
+    const responsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === "/api/v1/items/" &&
+        url.searchParams.get("title") === query
+      )
+    })
+    await search.fill(query)
+    const response = await responsePromise
+    expect(response.ok()).toBeTruthy()
+    expect((await response.json()).count).toBe(1)
+    await expect(page.getByText(title, { exact: true })).toBeVisible()
+    await expect(page.getByText(otherTitle, { exact: true })).not.toBeVisible()
+
+    await search.fill(`no-match-${randomItemTitle()}`)
+    await expect(
+      page.getByText("No matching items", { exact: true }),
+    ).toBeVisible()
+
+    await search.fill("")
+    await expect(page.getByText(title, { exact: true })).toBeVisible()
+    await expect(page.getByText(otherTitle, { exact: true })).toBeVisible()
+  })
+
   test("Cancel item creation", async ({ page }) => {
     await page.getByRole("button", { name: "Add Item" }).click()
     await page.getByLabel("Title").fill("Test Item")

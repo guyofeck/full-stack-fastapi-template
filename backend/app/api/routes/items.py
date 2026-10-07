@@ -12,34 +12,29 @@ router = APIRouter(prefix="/items", tags=["items"])
 
 @router.get("/", response_model=ItemsPublic)
 def read_items(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+    title: str | None = None,
 ) -> Any:
     """
-    Retrieve items.
+    Retrieve items, optionally filtering by a case-insensitive title substring.
     """
+    statement = select(Item)
+    count_statement = select(func.count()).select_from(Item)
+    if not current_user.is_superuser:
+        statement = statement.where(Item.owner_id == current_user.id)
+        count_statement = count_statement.where(Item.owner_id == current_user.id)
+    if title:
+        title_filter = col(Item.title).icontains(title, autoescape=True)
+        statement = statement.where(title_filter)
+        count_statement = count_statement.where(title_filter)
 
-    if current_user.is_superuser:
-        count_statement = select(func.count()).select_from(Item)
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item).order_by(col(Item.created_at).desc()).offset(skip).limit(limit)
-        )
-        items = session.exec(statement).all()
-    else:
-        count_statement = (
-            select(func.count())
-            .select_from(Item)
-            .where(Item.owner_id == current_user.id)
-        )
-        count = session.exec(count_statement).one()
-        statement = (
-            select(Item)
-            .where(Item.owner_id == current_user.id)
-            .order_by(col(Item.created_at).desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        items = session.exec(statement).all()
+    count = session.exec(count_statement).one()
+    items = session.exec(
+        statement.order_by(col(Item.created_at).desc()).offset(skip).limit(limit)
+    ).all()
 
     items_public = [ItemPublic.model_validate(item) for item in items]
     return ItemsPublic(data=items_public, count=count)
