@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { type ItemCreate, ItemsService } from "@/client"
+import PriorityField from "@/components/Items/PriorityField"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -33,6 +34,7 @@ import { handleError } from "@/utils"
 const formSchema = z.object({
   title: z.string().min(1, { message: "Title is required" }),
   description: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -49,6 +51,7 @@ const AddItem = () => {
     defaultValues: {
       title: "",
       description: "",
+      priority: "medium",
     },
   })
 
@@ -121,6 +124,7 @@ const AddItem = () => {
                   </FormItem>
                 )}
               />
+              <PriorityField />
             </div>
 
             <DialogFooter>

@@ -11,4 +11,5 @@
 ## Verify
 - `curl localhost:3000/api/v1/utils/health-check/` → `true`
 - `curl -X POST localhost:3000/api/v1/login/access-token -d 'username=admin@example.com&password=changethis'` returns a token.
-- Backend tests: `docker compose -f docker-compose.base44.yml exec backend sh -c 'cd backend && uv run --no-sync pytest'` (uses the dev DB).
+- Backend tests: `docker compose -f docker-compose.base44.yml exec backend sh -c 'cd backend && uv run --no-sync pytest'` (uses the dev DB). **The session fixture deletes all items and users on teardown**; prefer a disposable database and pass its `DATABASE_URL` with `exec -e` when testing, running Alembic upgrades there first.
+- Regenerate the frontend client from an exported OpenAPI JSON file (as `scripts/generate-client.sh` does), not a live URL: URL input bakes that server's internal address into the generated client defaults.
