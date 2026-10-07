@@ -1,5 +1,6 @@
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -20,8 +21,60 @@ def test_create_item(
     content = response.json()
     assert content["title"] == data["title"]
     assert content["description"] == data["description"]
+    assert content["priority"] == "medium"
     assert "id" in content
     assert "owner_id" in content
+
+
+@pytest.mark.parametrize("priority", ["low", "medium", "high"])
+def test_item_priority_round_trip(
+    client: TestClient, superuser_token_headers: dict[str, str], priority: str
+) -> None:
+    headers = superuser_token_headers
+    response = client.post(
+        f"{settings.API_V1_STR}/items/",
+        headers=headers,
+        json={"title": "Priority test", "priority": priority},
+    )
+    assert response.status_code == 200
+    item = response.json()
+    assert item["priority"] == priority
+    url = f"{settings.API_V1_STR}/items/{item['id']}"
+    assert client.get(url, headers=headers).json()["priority"] == priority
+    listed = client.get(f"{settings.API_V1_STR}/items/", headers=headers).json()["data"]
+    assert next(i for i in listed if i["id"] == item["id"])["priority"] == priority
+
+    # Omitting priority on update must preserve the existing value.
+    response = client.put(url, headers=headers, json={"title": "New title"})
+    assert response.status_code == 200
+    assert response.json()["priority"] == priority
+    updated_priority = "high" if priority != "high" else "low"
+    response = client.put(url, headers=headers, json={"priority": updated_priority})
+    assert response.status_code == 200
+    assert response.json()["priority"] == updated_priority
+    assert client.get(url, headers=headers).json()["priority"] == updated_priority
+
+
+@pytest.mark.parametrize("priority", ["urgent", "", None])
+def test_invalid_item_priority(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    db: Session,
+    priority: str | None,
+) -> None:
+    item = create_random_item(db)
+    response = client.post(
+        f"{settings.API_V1_STR}/items/",
+        headers=superuser_token_headers,
+        json={"title": "Invalid priority", "priority": priority},
+    )
+    assert response.status_code == 422
+    response = client.put(
+        f"{settings.API_V1_STR}/items/{item.id}",
+        headers=superuser_token_headers,
+        json={"priority": priority},
+    )
+    assert response.status_code == 422
 
 
 def test_read_item(
