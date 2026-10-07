@@ -62,6 +62,13 @@ export const columns: ColumnDef<ItemPublic>[] = [
     },
   },
   {
+    accessorKey: "priority",
+    header: "Priority",
+    cell: ({ row }) => (
+      <span className="capitalize">{row.original.priority}</span>
+    ),
+  },
+  {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
     cell: ({ row }) => (

@@ -11,4 +11,5 @@
 ## Verify
 - `curl localhost:3000/api/v1/utils/health-check/` → `true`
 - `curl -X POST localhost:3000/api/v1/login/access-token -d 'username=admin@example.com&password=changethis'` returns a token.
-- Backend tests: `docker compose -f docker-compose.base44.yml exec backend sh -c 'cd backend && uv run --no-sync pytest'` (uses the dev DB).
+- Backend tests: `docker compose -f docker-compose.base44.yml exec backend sh -c 'cd backend && uv run --no-sync pytest'` (uses the dev DB). Warning: the session fixture deletes all items and users at teardown. Prefer a separate migrated database, setting `DATABASE_URL` for both Alembic and pytest.
+- Item priority migration backfills existing rows to `medium`; the database keeps a server default and a check constraint. API update defaults are excluded when omitted, so title-only edits preserve priority.

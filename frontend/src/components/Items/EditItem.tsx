@@ -29,10 +29,12 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import PrioritySelect from "./PrioritySelect"
 
 const formSchema = z.object({
   title: z.string().min(1, { message: "Title is required" }),
   description: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -54,6 +56,7 @@ const EditItem = ({ item, onSuccess }: EditItemProps) => {
     defaultValues: {
       title: item.title,
       description: item.description ?? undefined,
+      priority: item.priority,
     },
   })
 
@@ -118,6 +121,23 @@ const EditItem = ({ item, onSuccess }: EditItemProps) => {
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Input placeholder="Description" type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <FormControl>
+                      <PrioritySelect
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

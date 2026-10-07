@@ -41,10 +41,18 @@ test.describe("Items management", () => {
     await page.getByRole("button", { name: "Add Item" }).click()
     await page.getByLabel("Title").fill(title)
     await page.getByLabel("Description").fill(description)
+    await expect(page.getByRole("combobox", { name: "Priority" })).toHaveText(
+      "Medium",
+    )
+    await page.getByRole("combobox", { name: "Priority" }).click()
+    await page.getByRole("option", { name: "High", exact: true }).click()
     await page.getByRole("button", { name: "Save" }).click()
 
     await expect(page.getByText("Item created successfully")).toBeVisible()
     await expect(page.getByText(title)).toBeVisible()
+    await expect(
+      page.getByRole("row").filter({ hasText: title }),
+    ).toContainText("High")
   })
 
   test("Create item with only required fields", async ({ page }) => {
@@ -56,6 +64,9 @@ test.describe("Items management", () => {
 
     await expect(page.getByText("Item created successfully")).toBeVisible()
     await expect(page.getByText(title)).toBeVisible()
+    await expect(
+      page.getByRole("row").filter({ hasText: title }),
+    ).toContainText("Medium")
   })
 
   test("Cancel item creation", async ({ page }) => {
@@ -94,10 +105,22 @@ test.describe("Items management", () => {
 
       const updatedTitle = randomItemTitle()
       await page.getByLabel("Title").fill(updatedTitle)
+      await expect(page.getByRole("combobox", { name: "Priority" })).toHaveText(
+        "Medium",
+      )
+      await page.getByRole("combobox", { name: "Priority" }).click()
+      await page.getByRole("option", { name: "Low", exact: true }).click()
       await page.getByRole("button", { name: "Save" }).click()
 
       await expect(page.getByText("Item updated successfully")).toBeVisible()
       await expect(page.getByText(updatedTitle)).toBeVisible()
+      await expect(
+        page.getByRole("row").filter({ hasText: updatedTitle }),
+      ).toContainText("Low")
+      await page.reload()
+      await expect(
+        page.getByRole("row").filter({ hasText: updatedTitle }),
+      ).toContainText("Low")
     })
 
     test("Delete an item successfully", async ({ page }) => {

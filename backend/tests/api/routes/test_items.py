@@ -1,5 +1,6 @@
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -20,6 +21,7 @@ def test_create_item(
     content = response.json()
     assert content["title"] == data["title"]
     assert content["description"] == data["description"]
+    assert content["priority"] == "medium"
     assert "id" in content
     assert "owner_id" in content
 
@@ -162,3 +164,61 @@ def test_delete_item_not_enough_permissions(
     assert response.status_code == 403
     content = response.json()
     assert content["detail"] == "Not enough permissions"
+
+
+@pytest.mark.parametrize("priority", ["low", "medium", "high"])
+def test_item_priority_round_trip(
+    client: TestClient, superuser_token_headers: dict[str, str], priority: str
+) -> None:
+    headers = superuser_token_headers
+    url = f"{settings.API_V1_STR}/items/"
+    response = client.post(
+        url, headers=headers, json={"title": "Priority test", "priority": priority}
+    )
+    assert response.status_code == 200
+    item = response.json()
+    assert item["priority"] == priority
+    item_url = f"{url}{item['id']}"
+    try:
+        assert client.get(item_url, headers=headers).json()["priority"] == priority
+        assert any(
+            row["id"] == item["id"] and row["priority"] == priority
+            for row in client.get(url, headers=headers).json()["data"]
+        )
+        response = client.put(
+            item_url, headers=headers, json={"title": "Still same priority"}
+        )
+        assert response.status_code == 200
+        assert response.json()["priority"] == priority
+        for new_priority in ("high", "low", "medium"):
+            response = client.put(
+                item_url, headers=headers, json={"priority": new_priority}
+            )
+            assert response.status_code == 200
+            assert response.json()["priority"] == new_priority
+            assert (
+                client.get(item_url, headers=headers).json()["priority"] == new_priority
+            )
+    finally:
+        client.delete(item_url, headers=headers)
+
+
+@pytest.mark.parametrize("priority", ["urgent", "", None])
+def test_invalid_item_priority(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    db: Session,
+    priority: str | None,
+) -> None:
+    url = f"{settings.API_V1_STR}/items/"
+    response = client.post(
+        url,
+        headers=superuser_token_headers,
+        json={"title": "Invalid priority", "priority": priority},
+    )
+    assert response.status_code == 422
+    item = create_random_item(db)
+    response = client.put(
+        f"{url}{item.id}", headers=superuser_token_headers, json={"priority": priority}
+    )
+    assert response.status_code == 422
