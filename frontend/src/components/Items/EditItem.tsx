@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { type ItemPublic, ItemsService } from "@/client"
+import { type ItemPublic, type Priority, ItemsService } from "@/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -29,10 +29,14 @@ import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import useCustomToast from "@/hooks/useCustomToast"
 import { handleError } from "@/utils"
+import { PrioritySelect } from "./PrioritySelect"
+
+const PRIORITY_VALUES = ["low", "medium", "high"] as const
 
 const formSchema = z.object({
   title: z.string().min(1, { message: "Title is required" }),
   description: z.string().optional(),
+  priority: z.enum(PRIORITY_VALUES),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -54,6 +58,7 @@ const EditItem = ({ item, onSuccess }: EditItemProps) => {
     defaultValues: {
       title: item.title,
       description: item.description ?? undefined,
+      priority: item.priority,
     },
   })
 
@@ -118,6 +123,23 @@ const EditItem = ({ item, onSuccess }: EditItemProps) => {
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Input placeholder="Description" type="text" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <FormControl>
+                      <PrioritySelect
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

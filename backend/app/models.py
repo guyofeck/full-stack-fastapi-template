@@ -1,13 +1,20 @@
+import enum
 import uuid
 from datetime import UTC, datetime
 
 from pydantic import EmailStr
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Enum
 from sqlmodel import Field, Relationship, SQLModel
 
 
 def get_datetime_utc() -> datetime:
     return datetime.now(UTC)
+
+
+class Priority(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
 
 
 # Shared properties
@@ -74,6 +81,13 @@ class UsersPublic(SQLModel):
 class ItemBase(SQLModel):
     title: str = Field(min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=255)
+    priority: Priority = Field(
+        default=Priority.MEDIUM,
+        sa_type=Enum(
+            Priority,
+            values_callable=lambda e: [m.value for m in e],
+        ),  # type: ignore
+    )
 
 
 # Properties to receive on item creation
@@ -85,6 +99,7 @@ class ItemCreate(ItemBase):
 class ItemUpdate(SQLModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=255)
+    priority: Priority | None = None
 
 
 # Database model, database table inferred from class name

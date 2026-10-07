@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 import { cn } from "@/lib/utils"
 import { ItemActionsMenu } from "./ItemActionsMenu"
+import { PriorityBadge } from "./PriorityBadge"
 
 function CopyId({ id }: { id: string }) {
   const [copiedText, copy] = useCopyToClipboard()
@@ -60,6 +61,11 @@ export const columns: ColumnDef<ItemPublic>[] = [
         </span>
       )
     },
+  },
+  {
+    accessorKey: "priority",
+    header: "Priority",
+    cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
   },
   {
     id: "actions",

@@ -45,6 +45,11 @@ export type HTTPValidationError = {
 };
 
 /**
+ * Priority
+ */
+export type Priority = 'low' | 'medium' | 'high';
+
+/**
  * ItemCreate
  */
 export type ItemCreate = {
@@ -56,6 +61,10 @@ export type ItemCreate = {
      * Description
      */
     description?: string | null;
+    /**
+     * Priority
+     */
+    priority?: Priority;
 };
 
 /**
@@ -70,6 +79,10 @@ export type ItemPublic = {
      * Description
      */
     description?: string | null;
+    /**
+     * Priority
+     */
+    priority: Priority;
     /**
      * Id
      */
@@ -96,6 +109,10 @@ export type ItemUpdate = {
      * Description
      */
     description?: string | null;
+    /**
+     * Priority
+     */
+    priority?: Priority;
 };
 
 /**
