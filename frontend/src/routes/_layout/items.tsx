@@ -1,19 +1,24 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { Search } from "lucide-react"
-import { Suspense } from "react"
+import { Suspense, useDeferredValue, useState } from "react"
 
 import { ItemsService } from "@/client"
 import { DataTable } from "@/components/Common/DataTable"
 import AddItem from "@/components/Items/AddItem"
 import { columns } from "@/components/Items/columns"
 import PendingItems from "@/components/Pending/PendingItems"
+import { Input } from "@/components/ui/input"
 
-function getItemsQueryOptions() {
+function getItemsQueryOptions(search: string) {
   return {
     queryFn: async () =>
-      (await ItemsService.readItems({ query: { skip: 0, limit: 100 } })).data,
-    queryKey: ["items"],
+      (
+        await ItemsService.readItems({
+          query: { skip: 0, limit: 100, q: search || undefined },
+        })
+      ).data,
+    queryKey: ["items", search],
   }
 }
 
@@ -28,8 +33,8 @@ export const Route = createFileRoute("/_layout/items")({
   }),
 })
 
-function ItemsTableContent() {
-  const { data: items } = useSuspenseQuery(getItemsQueryOptions())
+function ItemsTableContent({ search }: { search: string }) {
+  const { data: items } = useSuspenseQuery(getItemsQueryOptions(search))
 
   if (items.data.length === 0) {
     return (
@@ -37,8 +42,12 @@ function ItemsTableContent() {
         <div className="rounded-full bg-muted p-4 mb-4">
           <Search className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold">You don't have any items yet</h3>
-        <p className="text-muted-foreground">Add a new item to get started</p>
+        <h3 className="text-lg font-semibold">
+          {search ? "No items match your search" : "You don't have any items yet"}
+        </h3>
+        <p className="text-muted-foreground">
+          {search ? "Try a different title" : "Add a new item to get started"}
+        </p>
       </div>
     )
   }
@@ -46,15 +55,18 @@ function ItemsTableContent() {
   return <DataTable columns={columns} data={items.data} />
 }
 
-function ItemsTable() {
+function ItemsTable({ search }: { search: string }) {
   return (
     <Suspense fallback={<PendingItems />}>
-      <ItemsTableContent />
+      <ItemsTableContent search={search} />
     </Suspense>
   )
 }
 
 function Items() {
+  const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search.trim())
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -64,7 +76,15 @@ function Items() {
         </div>
         <AddItem />
       </div>
-      <ItemsTable />
+      <Input
+        type="search"
+        aria-label="Search items by title"
+        placeholder="Search items by title..."
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        className="max-w-sm"
+      />
+      <ItemsTable search={deferredSearch} />
     </div>
   )
 }

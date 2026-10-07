@@ -58,6 +58,38 @@ test.describe("Items management", () => {
     await expect(page.getByText(title)).toBeVisible()
   })
 
+  test("Search items by title through the API", async ({ page }) => {
+    const marker = randomItemTitle()
+    const matchingTitle = `${marker} Alpha`
+    const otherTitle = `${marker} Other`
+    for (const title of [matchingTitle, otherTitle]) {
+      await page.getByRole("button", { name: "Add Item" }).click()
+      await page.getByLabel("Title", { exact: true }).fill(title)
+      await page.getByRole("button", { name: "Save" }).click()
+      await expect(page.getByRole("dialog")).not.toBeVisible()
+      await expect(page.getByRole("cell", { name: title, exact: true })).toBeVisible()
+    }
+
+    const query = `${marker} alpha`
+    const responsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return url.pathname === "/api/v1/items/" && url.searchParams.get("q") === query
+    })
+    const search = page.getByRole("searchbox", { name: "Search items by title" })
+    await search.fill(query)
+    const response = await responsePromise
+    expect(response.ok()).toBeTruthy()
+    expect((await response.json()).count).toBe(1)
+    await expect(page.getByRole("cell", { name: matchingTitle, exact: true })).toBeVisible()
+    await expect(page.getByRole("cell", { name: otherTitle, exact: true })).not.toBeVisible()
+
+    await search.fill(`${marker} missing`)
+    await expect(page.getByText("No items match your search")).toBeVisible()
+    await search.fill("")
+    await expect(page.getByRole("cell", { name: matchingTitle, exact: true })).toBeVisible()
+    await expect(page.getByRole("cell", { name: otherTitle, exact: true })).toBeVisible()
+  })
+
   test("Cancel item creation", async ({ page }) => {
     await page.getByRole("button", { name: "Add Item" }).click()
     await page.getByLabel("Title").fill("Test Item")
